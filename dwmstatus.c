@@ -4,24 +4,62 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 
-#define STRING_MAX 128
+#define STRING_MAX 256
 #define SLEEP_TIME  60
 
-static const char *battery_str(void);
-static const char *datetime_str(void);
-static const char *volume_str(void);
-static void xsetroot(const char*);
+static const char *draw_bat(void);
+static const char *draw_time(void);
+static const char *draw_vol(void);
 
 static const char*
-battery_str(void)
+draw_bat(void)
 {
 	static char str[STRING_MAX];
+
+	char charging;
+
+	FILE *fd_0,
+	     *fd_1,
+	     *fd_2;
+
+	int charge_0 = 0,
+	    charge_1 = 0;
+
+	if (NULL == (fd_0 = fopen("/sys/class/power_supply/BAT0/charge_now", "r")))
+		return "bat err 0";
+
+	if (NULL == (fd_1 = fopen("/sys/class/power_supply/BAT0/charge_full_design", "r")))
+		return "bat err 1";
+
+	if (NULL == (fd_2 = fopen("/sys/class/power_supply/BAT0/status", "r")))
+		return "bat err 2";
+
+	switch (fgetc(fd_2)) {
+
+	case 'C': charging = '+'; break;
+	case 'F': charging = '='; break;
+	case 'D': charging = '-'; break;
+
+	default:
+		return "bat err 3";
+	}
+
+	if (EOF == fscanf(fd_0, "%d\n", &charge_0))
+		return "bat err 4";
+
+	if (EOF == fscanf(fd_1, "%d\n", &charge_1))
+		return "bat err 5";
+
+	if (charge_0 <= 0 || charge_1 <= 0)
+		return "bat err 6";
+
+	snprintf(str, sizeof(str), "%c %d%%", charging, (int)(charge_0 * 100.0 / charge_1));
 
 	return str;
 }
 
 static const char*
-datetime_str(void)
+draw_time(void)
 {
 	static char str[STRING_MAX];
 
@@ -33,41 +71,34 @@ datetime_str(void)
 }
 
 static const char*
-volume_str(void)
+draw_vol(void)
 {
 	static char str[STRING_MAX];
 
 	return str;
 }
 
-static void
-xsetroot(const char *str)
+int
+main(void)
 {
 	Display *display;
 
 	if (!(display = XOpenDisplay(NULL)))
 		exit(EXIT_FAILURE);
 
-	XStoreName(display, DefaultRootWindow(display), str);
-	XSync(display, 0);
-
-	XCloseDisplay(display);
-}
-
-int
-main(void)
-{
-	char status[STRING_MAX];
-
 	for (;;) {
+		char status[STRING_MAX];
 
-		snprintf(status, sizeof(status),
-			"%s ~ %s ~ %s", volume_str(), battery_str(), datetime_str());
+		snprintf(status, sizeof(status), " %s  ~  %s  ~  %s ",
+			draw_vol(), draw_bat(), draw_time());
 
-		xsetroot(status);
+		XStoreName(display, DefaultRootWindow(display), status);
+		XSync(display, 0);
 
 		sleep(SLEEP_TIME);
 	}
+
+	XCloseDisplay(display);
 
 	return 0;
 }
