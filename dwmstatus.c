@@ -16,46 +16,44 @@ draw_bat(void)
 {
 	static char str[STRING_MAX];
 
-	char charging;
+	char s = 0, *err = NULL;
 
-	FILE *fd_0,
-	     *fd_1,
-	     *fd_2;
+	int c0 = 0,
+	    c1 = 0;
 
-	int charge_0 = 0,
-	    charge_1 = 0;
+	FILE *fd_0 = fopen("/sys/class/power_supply/BAT0/status", "r"),
+	     *fd_1 = fopen("/sys/class/power_supply/BAT0/charge_now", "r"),
+	     *fd_2 = fopen("/sys/class/power_supply/BAT0/charge_full_design", "r");
 
-	if (NULL == (fd_0 = fopen("/sys/class/power_supply/BAT0/charge_now", "r")))
-		return "bat err 0";
+	if (fd_0 && fd_1 && fd_2) {
 
-	if (NULL == (fd_1 = fopen("/sys/class/power_supply/BAT0/charge_full_design", "r")))
-		return "bat err 1";
+		switch (fgetc(fd_0)) {
+			case 'C': s = '+'; break;
+			case 'D': s = '-'; break;
+			case 'F': s = ' '; break;
+			default:
+				err = "err: s";
+				break;
+		}
 
-	if (NULL == (fd_2 = fopen("/sys/class/power_supply/BAT0/status", "r")))
-		return "bat err 2";
+		if (!err && EOF == fscanf(fd_1, "%d\n", &c0))
+			err = "err: c0";
 
-	switch (fgetc(fd_2)) {
+		if (!err && EOF == fscanf(fd_2, "%d\n", &c1))
+			err = "err: c1";
 
-	case 'C': charging = '+'; break;
-	case 'F': charging = '='; break;
-	case 'D': charging = '-'; break;
+		if (!err && (c0 <= 0 || c1 <= 0))
+			err = "err: invalid";
 
-	default:
-		return "bat err 3";
+		if (!err && 0 > snprintf(str, sizeof(str), "%c %d%%", s, (int)(c0 * 100.0 / c1)))
+			err = "err: snprintf";
 	}
 
-	if (EOF == fscanf(fd_0, "%d\n", &charge_0))
-		return "bat err 4";
+	if (fd_0) fclose(fd_0) else err = "err: fd_0";
+	if (fd_1) fclose(fd_1) else err = "err: fd_1";
+	if (fd_2) fclose(fd_2) else err = "err: fd_2";
 
-	if (EOF == fscanf(fd_1, "%d\n", &charge_1))
-		return "bat err 5";
-
-	if (charge_0 <= 0 || charge_1 <= 0)
-		return "bat err 6";
-
-	snprintf(str, sizeof(str), "%c %d%%", charging, (int)(charge_0 * 100.0 / charge_1));
-
-	return str;
+	return err ? err : str;
 }
 
 static const char*
