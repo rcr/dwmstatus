@@ -1,0 +1,9 @@
+dwmstatus
+---------
+
+Write status information to the root window's `name` parameter
+for the purpose of displaying it in dwm's status bar.
+
+make install
+
+/usr/local/bin/dwmstatus &
