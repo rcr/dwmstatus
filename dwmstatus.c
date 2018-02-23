@@ -82,7 +82,7 @@ main(int argc, char **argv)
 	unsigned int seconds = 0;
 
 	if (argc > 1)
-		seconds = (unsigned int)(strtol(argv[1], NULL, 0));
+		seconds = (unsigned int)(strtoul(argv[1], NULL, 0));
 
 	Display *display;
 
