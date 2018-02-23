@@ -2,8 +2,16 @@ dwmstatus
 ---------
 
 Write status information to the root window's `name` parameter
-for the purpose of displaying it in dwm's status bar.
+for the purpose of displaying it in dwm's status bar. Currently:
+	- volume
+	- battery
+	- date/time
+
+If passed a positive integer argument n, dwmstatus repeats indefinitely
+every n seconds.
+
+---------
 
 make install
 
-/usr/local/bin/dwmstatus &
+dwmstatus 60 &
