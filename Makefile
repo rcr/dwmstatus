@@ -2,7 +2,7 @@
 
 CC      = cc
 CFLAGS  = -std=c99 -Wall -Wextra -pedantic -O3
-LDFLAGS = -s -lX11
+LDFLAGS = -s -lX11 -lasound
 
 DESTDIR = /usr/local/bin
 
