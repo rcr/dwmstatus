@@ -1,7 +1,7 @@
 .POSIX:
 
 CC      = cc
-CFLAGS  = -std=c99 -Wall -Wextra -pedantic -O3
+CFLAGS  = -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -pedantic -O2
 LDFLAGS = -s -lX11 -lasound
 
 DESTDIR = /usr/local/bin

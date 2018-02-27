@@ -75,51 +75,54 @@ draw_v(char *str, size_t n)
 
 	int enabled = 0;
 
-	long vol    = 0, /* current volume */
-	     volmin = 0, /* minimum volume */
-	     volmax = 0; /* maximum volume */
+	long volcur   = 0, /* current volume */
+	     volmin   = 0, /* minimum volume */
+	     volmax   = 0, /* maximum volume */
+	     volrange = 0; /* volume range */
 
 	snd_mixer_t *handle = NULL;
 	snd_mixer_elem_t *elem = NULL;
 	snd_mixer_selem_id_t *sid = NULL;
 
 	snd_mixer_selem_id_alloca(&sid);
-
 	snd_mixer_selem_id_set_index(sid, 0);
 	snd_mixer_selem_id_set_name(sid, "Master");
 
 	if (0 > snd_mixer_open(&handle, 0))
 		err = "err: open";
 
-	if (!err && 0 > snd_mixer_attach(handle, "default"))
+	else if (0 > snd_mixer_attach(handle, "default"))
 		err = "err: attach";
 
-	if (!err && 0 > snd_mixer_selem_register(handle, NULL, NULL))
+	else if (0 > snd_mixer_selem_register(handle, NULL, NULL))
 		err = "err: selem register";
 
-	if (!err && 0 > snd_mixer_load(handle))
+	else if (0 > snd_mixer_load(handle))
 		err = "err: load";
 
-	if (!err && NULL == (elem = snd_mixer_find_selem(handle, sid)))
+	else if (NULL == (elem = snd_mixer_find_selem(handle, sid)))
 		err = "err: find selem";
 
-	if (!err && 0 > snd_mixer_selem_get_playback_switch(elem, 0, &enabled))
+	else if (0 > snd_mixer_selem_get_playback_switch(elem, 0, &enabled))
 		err = "err: get playback switch";
 
-	if (!err && 0 > snd_mixer_selem_get_playback_volume(elem, 0, &vol))
+	else if (0 > snd_mixer_selem_get_playback_volume(elem, 0, &volcur))
 		err = "err: get playback vol";
 
-	if (!err && 0 > snd_mixer_selem_get_playback_volume_range(elem, &volmin, &volmax))
+	else if (0 > snd_mixer_selem_get_playback_volume_range(elem, &volmin, &volmax))
 		err = "err: get playback vol range";
 
-	if (!err && 0 == (volmax -= volmin))
+	else if (0 > snd_mixer_detach(handle, "default"))
+		err = "err: detach";
+
+	else if (0 >= (volrange = (volmax - volmin)))
 		err = "err: invalid range";
 
-	if (!err && 0 > snprintf(str, n, "%c %d%%", (enabled ? ' ' : 'M'), (int)(vol * 100.0 / volmax)))
+	else if (0 > snprintf(str, n, "%c %d%%", (enabled ? ' ' : 'M'), (int)(volcur * 100.0 / volrange)))
 		err = "err: snprintf";
 
-	if (handle)
-		snd_mixer_close(handle);
+	if (handle && 0 > snd_mixer_close(handle))
+		err = "err: close";
 
 	return err ? err : str;
 }
