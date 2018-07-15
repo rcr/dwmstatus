@@ -73,7 +73,9 @@ draw_v(char *str, size_t n)
 {
 	char *err = NULL;
 
-	int enabled = 0;
+	int enabled_master = 0,
+	    enabled_headphone = 0,
+	    enabled_speaker = 0;
 
 	long volcur   = 0, /* current volume */
 	     volmin   = 0, /* minimum volume */
@@ -81,12 +83,26 @@ draw_v(char *str, size_t n)
 	     volrange = 0; /* volume range */
 
 	snd_mixer_t *handle = NULL;
-	snd_mixer_elem_t *elem = NULL;
-	snd_mixer_selem_id_t *sid = NULL;
 
-	snd_mixer_selem_id_alloca(&sid);
-	snd_mixer_selem_id_set_index(sid, 0);
-	snd_mixer_selem_id_set_name(sid, "Master");
+	snd_mixer_elem_t *elem_master = NULL;
+	snd_mixer_elem_t *elem_headphone = NULL;
+	snd_mixer_elem_t *elem_speaker = NULL;
+
+	snd_mixer_selem_id_t *sid_master = NULL;
+	snd_mixer_selem_id_t *sid_headphone = NULL;
+	snd_mixer_selem_id_t *sid_speaker = NULL;
+
+	snd_mixer_selem_id_alloca(&sid_master);
+	snd_mixer_selem_id_alloca(&sid_headphone);
+	snd_mixer_selem_id_alloca(&sid_speaker);
+
+	snd_mixer_selem_id_set_index(sid_master, 0);
+	snd_mixer_selem_id_set_index(sid_headphone, 0);
+	snd_mixer_selem_id_set_index(sid_speaker, 0);
+
+	snd_mixer_selem_id_set_name(sid_master, "Master");
+	snd_mixer_selem_id_set_name(sid_headphone, "Headphone");
+	snd_mixer_selem_id_set_name(sid_speaker, "Speaker");
 
 	if (0 > snd_mixer_open(&handle, 0))
 		err = "err: open";
@@ -100,16 +116,20 @@ draw_v(char *str, size_t n)
 	else if (0 > snd_mixer_load(handle))
 		err = "err: load";
 
-	else if (NULL == (elem = snd_mixer_find_selem(handle, sid)))
+	else if ((NULL == (elem_master = snd_mixer_find_selem(handle, sid_master)))
+	      || (NULL == (elem_headphone = snd_mixer_find_selem(handle, sid_headphone)))
+	      || (NULL == (elem_speaker = snd_mixer_find_selem(handle, sid_speaker))))
 		err = "err: find selem";
 
-	else if (0 > snd_mixer_selem_get_playback_switch(elem, 0, &enabled))
+	else if ((0 > snd_mixer_selem_get_playback_switch(elem_master, 0, &enabled_master))
+	      || (0 > snd_mixer_selem_get_playback_switch(elem_headphone, 0, &enabled_headphone))
+	      || (0 > snd_mixer_selem_get_playback_switch(elem_speaker, 0, &enabled_speaker)))
 		err = "err: get playback switch";
 
-	else if (0 > snd_mixer_selem_get_playback_volume(elem, 0, &volcur))
+	else if (0 > snd_mixer_selem_get_playback_volume(elem_master, 0, &volcur))
 		err = "err: get playback vol";
 
-	else if (0 > snd_mixer_selem_get_playback_volume_range(elem, &volmin, &volmax))
+	else if (0 > snd_mixer_selem_get_playback_volume_range(elem_master, &volmin, &volmax))
 		err = "err: get playback vol range";
 
 	else if (0 > snd_mixer_detach(handle, "default"))
@@ -118,7 +138,11 @@ draw_v(char *str, size_t n)
 	else if (0 >= (volrange = (volmax - volmin)))
 		err = "err: invalid range";
 
-	else if (0 > snprintf(str, n, "%c %d%%", (enabled ? ' ' : 'M'), (int)(volcur * 100.0 / volrange)))
+	else if (0 > snprintf(str, n, "%s %d%% %s%s",
+				(enabled_master ? "" : "M"),
+				(int)(volcur * 100.0 / volrange),
+				(enabled_headphone ? "H" : ""),
+				(enabled_speaker ? "S" : "")))
 		err = "err: snprintf";
 
 	if (handle && 0 > snd_mixer_close(handle))
