@@ -30,19 +30,19 @@ draw_b(char *str, size_t n)
 
 	FILE *fd_0 = fopen("/sys/class/power_supply/BAT0/status", "r"),
 	     *fd_1 = fopen("/sys/class/power_supply/BAT0/charge_now", "r"),
-	     *fd_2 = fopen("/sys/class/power_supply/BAT0/charge_full_design", "r");
+	     *fd_2 = fopen("/sys/class/power_supply/BAT0/charge_full", "r");
 
 	if (fd_0 && fd_1 && fd_2) {
 
-		char s = 0;
+		char *s;
 
 		int c0 = 0,
 		    c1 = 0;
 
 		switch (fgetc(fd_0)) {
-			case 'C': s = '+'; break;
-			case 'D': s = '-'; break;
-			case 'F': s = ' '; break;
+			case 'C': s = "+"; break;
+			case 'D': s = "-"; break;
+			case 'F': s = "";  break;
 			default:
 				err = errstr("s");
 		}
@@ -56,7 +56,7 @@ draw_b(char *str, size_t n)
 		if (!err && (c0 <= 0 || c1 <= 0))
 			err = errstr("invalid");
 
-		if (!err && 0 > snprintf(str, n, "%c%d%%", s, (int)(c0 * 100.0 / c1)))
+		if (!err && 0 > snprintf(str, n, "%s%d%%", s, (int)(c0 * 100.0 / c1)))
 			err = errstr("snprintf");
 	}
 
