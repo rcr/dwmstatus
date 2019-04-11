@@ -34,7 +34,7 @@ draw_b(char *str, size_t n)
 
 	if (fd_0 && fd_1 && fd_2) {
 
-		char *s;
+		const char *s;
 
 		int c0 = 0,
 		    c1 = 0;
@@ -85,6 +85,9 @@ draw_v(char *str, size_t n)
 {
 	const char *err = NULL;
 
+	/* See `amixer -c N scontrols` */
+	const char *card_name = "hw:0";
+
 	int enabled_master = 0,
 	    enabled_headphone = 0,
 	    enabled_speaker = 0;
@@ -119,7 +122,7 @@ draw_v(char *str, size_t n)
 	if (0 > snd_mixer_open(&handle, 0))
 		err = errstr("open");
 
-	else if (0 > snd_mixer_attach(handle, "default"))
+	else if (0 > snd_mixer_attach(handle, card_name))
 		err = errstr("attach");
 
 	else if (0 > snd_mixer_selem_register(handle, NULL, NULL))
@@ -144,15 +147,16 @@ draw_v(char *str, size_t n)
 	else if (0 > snd_mixer_selem_get_playback_volume_range(elem_master, &volmin, &volmax))
 		err = errstr("get playback vol range");
 
-	else if (0 > snd_mixer_detach(handle, "default"))
+	else if (0 > snd_mixer_detach(handle, card_name))
 		err = errstr("detach");
 
 	else if (0 >= (volrange = (volmax - volmin)))
 		err = errstr("invalid range");
 
-	else if (0 > snprintf(str, n, "%s %d%% %s%s",
-				(enabled_master ? "" : "M"),
+	else if (0 > snprintf(str, n, "%s %d%%%s%s%s",
+				(enabled_master ? "" : "MUTE"),
 				(int)(volcur * 100.0 / volrange),
+				(enabled_headphone || enabled_speaker ? " +" : ""),
 				(enabled_headphone ? "H" : ""),
 				(enabled_speaker ? "S" : "")))
 		err = errstr("snprintf");
