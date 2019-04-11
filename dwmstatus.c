@@ -11,11 +11,22 @@
 static const char *draw_b(char*, size_t);
 static const char *draw_t(char*, size_t);
 static const char *draw_v(char*, size_t);
+static const char *errstr(const char*);
+
+static char errbuf[STRING_MAX];
+
+static const char*
+errstr(const char *str)
+{
+	snprintf(errbuf, sizeof(errbuf), "err: %s", str);
+
+	return errbuf;
+}
 
 static const char*
 draw_b(char *str, size_t n)
 {
-	char *err = NULL;
+	const char *err = NULL;
 
 	FILE *fd_0 = fopen("/sys/class/power_supply/BAT0/status", "r"),
 	     *fd_1 = fopen("/sys/class/power_supply/BAT0/charge_now", "r"),
@@ -32,25 +43,26 @@ draw_b(char *str, size_t n)
 			case 'C': s = '+'; break;
 			case 'D': s = '-'; break;
 			case 'F': s = ' '; break;
-			default: err = "err: s";
+			default:
+				err = errstr("s");
 		}
 
 		if (!err && EOF == fscanf(fd_1, "%d\n", &c0))
-			err = "err: c0";
+			err = errstr("c0");
 
 		if (!err && EOF == fscanf(fd_2, "%d\n", &c1))
-			err = "err: c1";
+			err = errstr("c1");
 
 		if (!err && (c0 <= 0 || c1 <= 0))
-			err = "err: invalid";
+			err = errstr("invalid");
 
 		if (!err && 0 > snprintf(str, n, "%c%d%%", s, (int)(c0 * 100.0 / c1)))
-			err = "err: snprintf";
+			err = errstr("snprintf");
 	}
 
-	if (fd_0) fclose(fd_0); else err = "err: fd_0";
-	if (fd_1) fclose(fd_1); else err = "err: fd_1";
-	if (fd_2) fclose(fd_2); else err = "err: fd_2";
+	if (fd_0) fclose(fd_0); else err = errstr("fd_0");
+	if (fd_1) fclose(fd_1); else err = errstr("fd_1");
+	if (fd_2) fclose(fd_2); else err = errstr("fd_2");
 
 	return err ? err : str;
 }
@@ -58,12 +70,12 @@ draw_b(char *str, size_t n)
 static const char*
 draw_t(char *str, size_t n)
 {
-	char *err = NULL;
+	const char *err = NULL;
 
 	time_t now = time(0);
 
-	if (0 == strftime(str, n, "%a %e  %R", localtime(&now)))
-		err = "err: snprintf";
+	if (0 == strftime(str, n, "%a %e %R", localtime(&now)))
+		err = errstr("snprintf");
 
 	return err ? err : str;
 }
@@ -71,7 +83,7 @@ draw_t(char *str, size_t n)
 static const char*
 draw_v(char *str, size_t n)
 {
-	char *err = NULL;
+	const char *err = NULL;
 
 	int enabled_master = 0,
 	    enabled_headphone = 0,
@@ -105,48 +117,48 @@ draw_v(char *str, size_t n)
 	snd_mixer_selem_id_set_name(sid_speaker, "Speaker");
 
 	if (0 > snd_mixer_open(&handle, 0))
-		err = "err: open";
+		err = errstr("open");
 
 	else if (0 > snd_mixer_attach(handle, "default"))
-		err = "err: attach";
+		err = errstr("attach");
 
 	else if (0 > snd_mixer_selem_register(handle, NULL, NULL))
-		err = "err: selem register";
+		err = errstr("selem register");
 
 	else if (0 > snd_mixer_load(handle))
-		err = "err: load";
+		err = errstr("load");
 
 	else if ((NULL == (elem_master = snd_mixer_find_selem(handle, sid_master)))
 	      || (NULL == (elem_headphone = snd_mixer_find_selem(handle, sid_headphone)))
 	      || (NULL == (elem_speaker = snd_mixer_find_selem(handle, sid_speaker))))
-		err = "err: find selem";
+		err = errstr("find selem");
 
 	else if ((0 > snd_mixer_selem_get_playback_switch(elem_master, 0, &enabled_master))
 	      || (0 > snd_mixer_selem_get_playback_switch(elem_headphone, 0, &enabled_headphone))
 	      || (0 > snd_mixer_selem_get_playback_switch(elem_speaker, 0, &enabled_speaker)))
-		err = "err: get playback switch";
+		err = errstr("get playback switch");
 
 	else if (0 > snd_mixer_selem_get_playback_volume(elem_master, 0, &volcur))
-		err = "err: get playback vol";
+		err = errstr("get playback vol");
 
 	else if (0 > snd_mixer_selem_get_playback_volume_range(elem_master, &volmin, &volmax))
-		err = "err: get playback vol range";
+		err = errstr("get playback vol range");
 
 	else if (0 > snd_mixer_detach(handle, "default"))
-		err = "err: detach";
+		err = errstr("detach");
 
 	else if (0 >= (volrange = (volmax - volmin)))
-		err = "err: invalid range";
+		err = errstr("invalid range");
 
 	else if (0 > snprintf(str, n, "%s %d%% %s%s",
 				(enabled_master ? "" : "M"),
 				(int)(volcur * 100.0 / volrange),
 				(enabled_headphone ? "H" : ""),
 				(enabled_speaker ? "S" : "")))
-		err = "err: snprintf";
+		err = errstr("snprintf");
 
 	if (handle && 0 > snd_mixer_close(handle))
-		err = "err: close";
+		err = errstr("close");
 
 	return err ? err : str;
 }
@@ -165,13 +177,13 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	do {
-		char status[STRING_MAX];
+		char status[STRING_MAX + sizeof(" []  []  [] ")];
 
 		char b_str[STRING_MAX];
 		char t_str[STRING_MAX];
 		char v_str[STRING_MAX];
 
-		snprintf(status, sizeof(status), " %s  ~  %s  ~  %s ",
+		snprintf(status, sizeof(status), " [%s]  [%s]  [%s] ",
 			draw_v(v_str, sizeof(v_str)),
 			draw_b(b_str, sizeof(b_str)),
 			draw_t(t_str, sizeof(t_str))
