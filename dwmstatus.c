@@ -30,11 +30,11 @@ draw_b(char *str, size_t n)
 
 	FILE *fd_0 = fopen("/sys/class/power_supply/BAT0/status", "r"),
 	     *fd_1 = fopen("/sys/class/power_supply/BAT0/charge_now", "r"),
-	     *fd_2 = fopen("/sys/class/power_supply/BAT0/charge_full", "r");
+	     *fd_2 = fopen("/sys/class/power_supply/BAT0/charge_full_design", "r");
 
 	if (fd_0 && fd_1 && fd_2) {
 
-		const char *s;
+		const char *s = "";
 
 		int c0 = 0,
 		    c1 = 0;
@@ -42,7 +42,7 @@ draw_b(char *str, size_t n)
 		switch (fgetc(fd_0)) {
 			case 'C': s = "+"; break;
 			case 'D': s = "-"; break;
-			case 'F': s = "";  break;
+			case 'F': break;
 			default:
 				err = errstr("s");
 		}
